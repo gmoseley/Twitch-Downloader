@@ -1522,7 +1522,7 @@ def scan_for_new_clips(channel):
 
 
 PROGRESS_RE = re.compile(
-    r"\[download\]\s+(?P<percent>[\d.]+)% of\s+~?(?P<size>[\d.]+\w+)"
+    r"\[download\]\s+(?P<percent>[\d.]+)% of\s+~?\s*(?P<size>[\d.]+\w+)"
     r"(?:\s+at\s+(?P<speed>[\d.]+\w+/s|Unknown))?"
     r"(?:\s+ETA\s+(?P<eta>[\d:]+|Unknown))?"
     r"(?:\s+\(frag\s+(?P<frag_done>\d+)/(?P<frag_total>\d+)\))?"
