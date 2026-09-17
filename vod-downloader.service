@@ -1,0 +1,15 @@
+[Unit]
+Description=Twitch VOD download manager (web panel + downloader)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/bin/vod-downloader.py
+Restart=always
+RestartSec=5
+Environment=VOD_STORAGE_ROOT=/srv/share/VOD Downloader
+Environment=VOD_STATE_DIR=/var/lib/vod-downloader
+
+[Install]
+WantedBy=multi-user.target

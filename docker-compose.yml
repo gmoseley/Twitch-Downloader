@@ -1,0 +1,8 @@
+services:
+  vod-downloader:
+    build: .
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
