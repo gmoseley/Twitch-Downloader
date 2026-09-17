@@ -926,6 +926,12 @@ def fetch_metadata(vid, channel):
     if meta.returncode != 0:
         return None, meta.stderr[-500:]
     d = json.loads(meta.stdout)
+    if d.get("is_live"):
+        # The stream backing this VOD hasn't ended yet, so there's nothing
+        # finished to download and it keeps growing underneath us if we try.
+        # The caller skips this vid entirely (no job created at all) so the
+        # next scan just tries again once the stream ends.
+        return None, "still live"
     title = sanitize(d.get("title"))
     game = sanitize(primary_game(d.get("chapters")))
     upload_date = d.get("upload_date")
@@ -1398,7 +1404,14 @@ def scan_for_new_vods(channel):
         ts = e.get("timestamp")
         if ts and cutoff_ts is not None and ts < cutoff_ts:
             continue
+        # Cheap pre-check: Twitch serves this exact placeholder thumbnail in
+        # the listing itself for a VOD whose stream hasn't ended, so skip it
+        # without even spending a metadata fetch on it.
+        if "404_processing" in (e.get("thumbnail") or ""):
+            continue
         meta, err = fetch_metadata(vid, channel)
+        if meta is None and err == "still live":
+            continue
         with lock:
             if vid in jobs:
                 continue
