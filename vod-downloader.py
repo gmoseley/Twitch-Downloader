@@ -1630,6 +1630,13 @@ def run_job(vid):
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        # yt-dlp is itself a Python program; CPython fully buffers stdout
+        # (instead of line-buffering) whenever it isn't a real terminal,
+        # which a pipe never is. Without this, every progress line sits in
+        # yt-dlp's own buffer and only arrives in one burst when the process
+        # exits, making the UI look frozen for the entire download and then
+        # jump straight to "completed".
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
     )
     with lock:
         job["pid"] = proc.pid
