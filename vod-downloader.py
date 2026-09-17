@@ -2226,8 +2226,12 @@ PAGE = """<!doctype html>
   .tab.active { color: #e8e8ea; background: #1a1d26; border-bottom: 2px solid #3b82f6; }
   .panel { display: none; }
   .panel.active { display: block; }
-  .subtabs { margin-bottom: 16px; }
+  .subtabs { margin-bottom: 0; }
   .subtabs .tab { padding: 8px 14px; font-size: 13px; }
+  .subtabs-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .subtabs-row .pausebar { margin-bottom: 0; }
+  .scanrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .scanrow .addrow { margin-bottom: 0; }
   .subpanel { display: none; }
   .subpanel.active { display: block; }
   .addrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
@@ -2265,6 +2269,8 @@ PAGE = """<!doctype html>
     .addrow input, .addrow select, .addrow button, .field { width: 100%; margin-right: 0; }
     .addrow > input, .field { flex: 0 0 auto; }
     .scan { width: 100%; }
+    .subtabs-row { flex-direction: column; align-items: stretch; }
+    .scanrow { flex-direction: column; align-items: stretch; }
 
     table, thead, tbody, tr, td { display: block; width: 100%; }
     thead { display: none; }
@@ -2329,14 +2335,16 @@ PAGE = """<!doctype html>
 <div id="channelPanels"></div>
 
 <div class="panel" data-panel="clips" id="panelClips">
-  <div class="pausebar">
-    <button class="add pause-all-btn" onclick="pauseAllDownloads()">Pause All Downloads</button>
-    <button class="add resume-all-btn" onclick="resumeAllDownloads()" style="display:none">Resume All Downloads</button>
-    <span class="pause-status-msg meta"></span>
-  </div>
-  <div class="tabs subtabs">
-    <button class="tab active" id="subtabPaste" onclick="showClipsSubTab('paste')">Paste a Link</button>
-    <button class="tab" id="subtabSearch" onclick="showClipsSubTab('search')">Search Clips</button>
+  <div class="subtabs-row">
+    <div class="tabs subtabs">
+      <button class="tab active" id="subtabPaste" onclick="showClipsSubTab('paste')">Paste a Link</button>
+      <button class="tab" id="subtabSearch" onclick="showClipsSubTab('search')">Search Clips</button>
+    </div>
+    <div class="pausebar">
+      <button class="add pause-all-btn" onclick="pauseAllDownloads()">Pause All Downloads</button>
+      <button class="add resume-all-btn" onclick="resumeAllDownloads()" style="display:none">Resume All Downloads</button>
+      <span class="pause-status-msg meta"></span>
+    </div>
   </div>
 
   <div class="subpanel active" id="subpanelPaste">
@@ -2558,26 +2566,30 @@ function retentionNote(ch) {
 function channelPanelHTML(ch) {
   const name = ch.name;
   return `
-    <div class="pausebar">
-      <button class="add pause-all-btn" onclick="pauseAllDownloads()">Pause All Downloads</button>
-      <button class="add resume-all-btn" onclick="resumeAllDownloads()" style="display:none">Resume All Downloads</button>
-      <span class="pause-status-msg meta"></span>
-    </div>
-    <div class="tabs subtabs">
-      <button class="tab active" id="subtabVods_${name}" onclick="showChannelSubTab('${name}','vods')">VODs</button>
-      <button class="tab" id="subtabClips_${name}" onclick="showChannelSubTab('${name}','clips')">Clips</button>
-      <button class="tab" id="subtabDeleted_${name}" onclick="showChannelSubTab('${name}','deleted')">Deleted</button>
+    <div class="subtabs-row">
+      <div class="tabs subtabs">
+        <button class="tab active" id="subtabVods_${name}" onclick="showChannelSubTab('${name}','vods')">VODs</button>
+        <button class="tab" id="subtabClips_${name}" onclick="showChannelSubTab('${name}','clips')">Clips</button>
+        <button class="tab" id="subtabDeleted_${name}" onclick="showChannelSubTab('${name}','deleted')">Deleted</button>
+      </div>
+      <div class="pausebar">
+        <button class="add pause-all-btn" onclick="pauseAllDownloads()">Pause All Downloads</button>
+        <button class="add resume-all-btn" onclick="resumeAllDownloads()" style="display:none">Resume All Downloads</button>
+        <span class="pause-status-msg meta"></span>
+      </div>
     </div>
 
     <div class="subpanel active" id="subpanelVods_${name}">
       <div class="sub">${retentionNote(ch)}</div>
-      <button class="scan" id="scanBtn_${name}" onclick="scanNow('${name}')">Check for VODs now</button>
-      <div id="scanMsg_${name}" class="meta" style="margin-top:8px"></div>
-      <div class="addrow" id="autoFilterRow_${name}" style="display:none; margin-top:12px">
-        <select class="catfilter" id="autoCategoryFilter_${name}" onchange="onCategoryFilterChange('auto:${name}','autoCategoryFilter_${name}')">
-          <option value="">All games</option>
-        </select>
+      <div class="scanrow">
+        <button class="scan" id="scanBtn_${name}" onclick="scanNow('${name}')">Check for VODs now</button>
+        <div class="addrow" id="autoFilterRow_${name}" style="display:none">
+          <select class="catfilter" id="autoCategoryFilter_${name}" onchange="onCategoryFilterChange('auto:${name}','autoCategoryFilter_${name}')">
+            <option value="">All games</option>
+          </select>
+        </div>
       </div>
+      <div id="scanMsg_${name}" class="meta" style="margin-top:8px"></div>
       <div class="table-wrap" style="margin-top:16px">
         <table>
           <thead><tr>
@@ -2599,13 +2611,15 @@ function channelPanelHTML(ch) {
 
     <div class="subpanel" id="subpanelClips_${name}">
       <div class="sub">${retentionNote(ch)}</div>
-      <button class="scan" id="scanClipsBtn_${name}" onclick="scanClipsNow('${name}')">Check for Clips now</button>
-      <div id="scanClipsMsg_${name}" class="meta" style="margin-top:8px"></div>
-      <div class="addrow" id="channelClipFilterRow_${name}" style="display:none; margin-top:12px">
-        <select class="catfilter" id="channelClipCategoryFilter_${name}" onchange="onCategoryFilterChange('channelClip:${name}','channelClipCategoryFilter_${name}')">
-          <option value="">All games</option>
-        </select>
+      <div class="scanrow">
+        <button class="scan" id="scanClipsBtn_${name}" onclick="scanClipsNow('${name}')">Check for Clips now</button>
+        <div class="addrow" id="channelClipFilterRow_${name}" style="display:none">
+          <select class="catfilter" id="channelClipCategoryFilter_${name}" onchange="onCategoryFilterChange('channelClip:${name}','channelClipCategoryFilter_${name}')">
+            <option value="">All games</option>
+          </select>
+        </div>
       </div>
+      <div id="scanClipsMsg_${name}" class="meta" style="margin-top:8px"></div>
       <div class="table-wrap" style="margin-top:16px">
         <table>
           <thead><tr>
