@@ -951,6 +951,7 @@ def fetch_metadata(vid, channel):
         "title": title,
         "game": game,
         "date": date_str,
+        "timestamp": d.get("timestamp"),
         "url": url,
         "outdir": outdir,
         "filename_base": filename_base,
@@ -1401,9 +1402,6 @@ def scan_for_new_vods(channel):
         vid = e.get("id")
         if not vid or vid in existing:
             continue
-        ts = e.get("timestamp")
-        if ts and cutoff_ts is not None and ts < cutoff_ts:
-            continue
         # Cheap pre-check: Twitch serves this exact placeholder thumbnail in
         # the listing itself for a VOD whose stream hasn't ended, so skip it
         # without even spending a metadata fetch on it.
@@ -1412,6 +1410,13 @@ def scan_for_new_vods(channel):
         meta, err = fetch_metadata(vid, channel)
         if meta is None and err == "still live":
             continue
+        # Unlike clips, this listing never carries a per-entry timestamp, so
+        # retention has to be checked against the real upload timestamp from
+        # the full metadata fetch instead. The listing is newest-first, so
+        # once one VOD is older than the cutoff, everything after it is too;
+        # stop scanning rather than fetching metadata for the entire history.
+        if meta and cutoff_ts is not None and meta.get("timestamp") and meta["timestamp"] < cutoff_ts:
+            break
         with lock:
             if vid in jobs:
                 continue
