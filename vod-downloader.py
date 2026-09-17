@@ -2705,10 +2705,13 @@ async function loadManageChannels() {
   empty.style.display = 'none';
   rows.innerHTML = trackedChannels.map(ch => `<tr>
     <td data-label="Channel">${escapeHtml(ch.name)}</td>
-    <td data-label="Check every (hours)"><input type="number" min="1" max="720" value="${ch.interval_hours}" style="max-width:100px" onchange="updateChannelField('${ch.name}', 'interval_hours', this.value)"></td>
-    <td data-label="Keep last (days)"><input type="number" min="0" max="3650" value="${ch.retention_days ?? 180}" style="max-width:100px" title="0 = no limit" onchange="updateChannelField('${ch.name}', 'retention_days', this.value)"></td>
+    <td data-label="Check every (hours)"><input type="number" min="1" max="720" value="${ch.interval_hours}" id="interval_${ch.name}" style="max-width:100px"></td>
+    <td data-label="Keep last (days)"><input type="number" min="0" max="3650" value="${ch.retention_days ?? 180}" id="retention_${ch.name}" style="max-width:100px" title="0 = no limit"></td>
     <td data-label="Next check">${ch.next_check_at ? new Date(ch.next_check_at * 1000).toLocaleString() : '-'}</td>
-    <td class="nolabel" data-label="Actions"><button class="delete" onclick="removeChannelSubmit('${ch.name}')">Remove</button></td>
+    <td class="nolabel" data-label="Actions">
+      <button class="add" onclick="saveChannelSettings('${ch.name}', this)">Save &amp; Check Now</button>
+      <button class="delete" onclick="removeChannelSubmit('${ch.name}')">Remove</button>
+    </td>
   </tr>`).join('');
 }
 
@@ -2789,23 +2792,46 @@ async function addChannelSubmit() {
   });
   if (res.error) {
     msg.textContent = `Error: ${res.error}`;
-  } else {
-    msg.textContent = `Added ${res.name}.`;
-    nameInput.value = '';
+    await loadChannels();
+    await loadManageChannels();
+    refresh();
+    return;
   }
+  nameInput.value = '';
   await loadChannels();
   await loadManageChannels();
+  msg.textContent = `Added ${res.name}. Checking now...`;
+  boostPolling();
+  await Promise.all([
+    api(`/api/channels/${encodeURIComponent(res.name)}/scan`, {method: 'POST'}),
+    api(`/api/channels/${encodeURIComponent(res.name)}/scan-clips`, {method: 'POST'}),
+  ]);
+  msg.textContent = `Added ${res.name} and checked for VODs/clips. Downloads start once you Resume All.`;
   refresh();
 }
 
-async function updateChannelField(name, field, value) {
+async function saveChannelSettings(name, btn) {
+  const intervalInput = document.getElementById(`interval_${name}`);
+  const retentionInput = document.getElementById(`retention_${name}`);
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
   await api(`/api/channels/${encodeURIComponent(name)}/update`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({[field]: value}),
+    body: JSON.stringify({interval_hours: intervalInput.value, retention_days: retentionInput.value}),
   });
   await loadChannels();
-  loadManageChannels();
+  btn.textContent = 'Checking now...';
+  boostPolling();
+  await Promise.all([
+    api(`/api/channels/${encodeURIComponent(name)}/scan`, {method: 'POST'}),
+    api(`/api/channels/${encodeURIComponent(name)}/scan-clips`, {method: 'POST'}),
+  ]);
+  btn.disabled = false;
+  btn.textContent = original;
+  await loadManageChannels();
+  refresh();
 }
 
 async function removeChannelSubmit(name) {
