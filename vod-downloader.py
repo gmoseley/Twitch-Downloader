@@ -761,13 +761,22 @@ def set_speed_limit_mbps(value):
     return True
 
 
-def speed_limit_args():
+def download_throttle_args():
+    # yt-dlp applies --limit-rate per connection, not to the combined total,
+    # so throttling while still downloading fragments in parallel would let
+    # the real aggregate multiply past the configured cap depending on how
+    # many fragments happen to be active -- and several parallel streams are
+    # far burstier (worse for bufferbloat) than one steadily-throttled
+    # stream regardless. When a limit is set, force a single connection so
+    # the cap is an actual hard ceiling with no multiplication effect.
+    # Fragments only run in parallel (for max speed) when there's no limit
+    # to violate in the first place.
     mbps = speed_limit_mbps()
     if not mbps:
-        return []
-    # yt-dlp's --limit-rate takes bytes/sec (with a K/M suffix); the admin
-    # setting is in Mbps (megabits) since that's how ISPs advertise speed.
-    return ["--limit-rate", f"{mbps / 8:.2f}M"]
+        return ["--concurrent-fragments", "8"]
+    # --limit-rate takes bytes/sec (with a K/M suffix); the admin setting is
+    # in Mbps (megabits) since that's how ISPs advertise speed.
+    return ["--concurrent-fragments", "1", "--limit-rate", f"{mbps / 8:.2f}M"]
 
 
 def list_dir(path):
@@ -1625,7 +1634,7 @@ def run_job(vid):
         save_state()
 
     proc = subprocess.Popen(
-        [YTDLP, "--concurrent-fragments", "8", "--newline", *speed_limit_args(), *format_args, "-o", outpath, meta["url"]],
+        [YTDLP, "--newline", *download_throttle_args(), *format_args, "-o", outpath, meta["url"]],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
